@@ -9,7 +9,7 @@ class PessoasService {
             const camposFaltantes = dadosObrigatorios.filter(campo => !(campo in dadosCadastro))
 
             if (camposFaltantes.length > 0) {
-                throw new Error('Você não está passando o(s) seguinte(s) dados: ' + camposFaltantes.join(', '))
+                throw new Error('Você não está passando o(s) seguinte(s) dado(s): ' + camposFaltantes.join(', '))
             }
 
             const criarPessoa = await Pessoas.create(dadosCadastro)

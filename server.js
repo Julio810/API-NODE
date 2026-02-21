@@ -4,6 +4,7 @@ import cors from "cors"
 import conn from "./src/db/conndb.js"
 import router from "./src/router/pessoasRouter.js"
 import trabalhoRouter from "./src/router/trabalhoRouter.js"
+import empresaRouter from "./src/router/empresaRouter.js"
 
 dotenv.config()
 
@@ -16,6 +17,7 @@ app.use(express.urlencoded({ extended: true }))
 
 app.use('/api', router)
 app.use('/api', trabalhoRouter)
+app.use('/api', empresaRouter)
 
 conn
     .sync()
