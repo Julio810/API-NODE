@@ -58,6 +58,12 @@ class EmpresaService {
                     id: id
                 }
             })
+
+            if (atualizar === 0) {
+                throw new Error('Nenhuma empresa correspondente com os dados informados.')
+            }
+
+            return dadosAtualizados
         } catch (error) {
             throw error
         }
@@ -69,6 +75,10 @@ class EmpresaService {
                     id: id
                 }
             })
+
+            if (deletar === 0) {
+                throw new Error('Nenhuma empresa correspondente com os dados informados.')
+            }
 
             return "Deletado com Sucesso"
         } catch (error) {

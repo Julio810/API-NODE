@@ -56,9 +56,13 @@ class TrabalhoService {
     }
     async atualizarProfissao(id, dadosAtualizados) {
         try {
-            const atualizar = await Trabalho.update(dadosAtualizados, {
+            const [atualizar] = await Trabalho.update(dadosAtualizados, {
                 where: { id: id }
             })
+
+            if (atualizar === 0) {
+                throw new Error('Nenhuma Profissão correspondente com os dados informados.')
+            }
 
             return dadosAtualizados
         } catch (error) {
@@ -70,6 +74,10 @@ class TrabalhoService {
             const deletar = await Trabalho.destroy({
                 where: { id: id }
             })
+
+            if (deletar === 0) {
+                throw new Error('Nenhuma Profissão correspondente com os dados informados.')
+            }
 
             return "Deletado com Sucesso"
 

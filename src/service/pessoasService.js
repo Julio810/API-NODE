@@ -1,10 +1,10 @@
 import { where, Op } from "sequelize"
-import Pessoas from "../models/Pessoas.js"
+import { Pessoas, Empresa, Trabalho } from "../models/index.js"
 
 class PessoasService {
     async cadastrarPessoas(dadosCadastro) {
         try {
-            const dadosObrigatorios = ['nome', 'idade', 'email', 'cpf']
+            const dadosObrigatorios = ['nome', 'idade', 'email', 'cpf', 'empresaId', 'trabalhoId']
 
             const camposFaltantes = dadosObrigatorios.filter(campo => !(campo in dadosCadastro))
 
@@ -20,7 +20,6 @@ class PessoasService {
             throw error
         }
     }
-
     async consultarPessoas(filtros, page, limit) {
         try {
             const offset = (page - 1) * limit
@@ -41,6 +40,10 @@ class PessoasService {
 
             const consultarPessoas = await Pessoas.findAndCountAll({
                 where,
+                attributes: {
+                    exclude: ['empresaId', 'trabalhoId']
+                },
+                include: [Empresa, Trabalho],
                 order: [['id', 'ASC']],
                 limit,
                 offset
@@ -57,16 +60,19 @@ class PessoasService {
             throw error
         }
     }
-
     async atualizarPessoas(id, dadosAtualizados) {
         try {
-            const atualizarDados = await Pessoas.update(dadosAtualizados, {
-                where: { id: id }
+            const [atualizarDados] = await Pessoas.update(dadosAtualizados, {
+                where: {
+                    id: id
+                }
             })
 
-            return {
-                dadosAtualizados
+            if (atualizarDados === 0) {
+                throw new Error('Não foi possível localizar a Pessoa')
             }
+
+            return dadosAtualizados
 
         } catch (error) {
             throw error
@@ -77,6 +83,10 @@ class PessoasService {
             const deletarDados = await Pessoas.destroy({
                 where: { id: id }
             })
+
+            if (deletarDados === 0) {
+                throw new Error('Não foi possível localizar a Pessoa')
+            }
 
             return "Deletado com Sucesso"
 
