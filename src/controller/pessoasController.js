@@ -14,9 +14,15 @@ class PessoasController {
     }
     static async consultarPessoas(req, res) {
         try {
-            const consultarPessoas = req.params
+            const { nome, idade, email, cpf, page = 1, limit = 10 } = req.query
 
-            const resultado = await PessoasService.consultarPessoas(consultarPessoas)
+            const filtros = { nome, idade, email, cpf }
+
+            const resultado = await PessoasService.consultarPessoas(
+                filtros,
+                Number(page),
+                Number(limit)
+            )
 
             res.status(200).json(resultado)
         } catch (error) {

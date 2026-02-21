@@ -14,9 +14,15 @@ class TrabalhoController {
     }
     static async consultarProfissoes(req, res) {
         try {
-            const consulta = req.params
+            const { profissao, ramo, page = 1, limit = 10 } = req.query
 
-            const resultado = await TrabalhoService.consultarProfissoes(consulta)
+            const filtros = { profissao, ramo }
+
+            const resultado = await TrabalhoService.consultarProfissoes(
+                filtros,
+                Number(page),
+                Number(limit)
+            )
 
             res.status(200).json(resultado)
         } catch (error) {

@@ -1,24 +1,57 @@
-import { where } from "sequelize"
+import { where, Op } from "sequelize"
 import Trabalho from "../models/Trabalho.js"
 
 class TrabalhoService {
     async cadastrarProfissao(dadosProfissao) {
         try {
+            const dadosObrigatorios = ['profissao', 'ramo']
+
+            const camposObrigatorios = dadosObrigatorios.filter(campo => !(campo in dadosProfissao))
+
+            if (camposObrigatorios.length > 0) {
+                throw new Error('Você não está passando o(s) seguinte(s) dados: ' + camposObrigatorios.join(', '))
+            }
+
             const profissao = await Trabalho.create(dadosProfissao)
 
             return dadosProfissao
 
         } catch (error) {
-            throw Error(error)
+            throw error
         }
     }
-    async consultarProfissoes() {
+    async consultarProfissoes(filtros, page = 1, limit = 10) {
         try {
-            const consulta = await Trabalho.findAll({ order: [['id']] })
+            const offset = (page - 1) * limit
+            const where = {}
 
-            return consulta
+            if (filtros.profissao && filtros.profissao.trim() !== '') {
+                where.profissao = { [Op.iLike]: `%${filtros.profissao}%` }
+            }
+
+            if (filtros.ramo && filtros.ramo.trim() !== '') {
+                where.ramo = { [Op.iLike]: `%${filtros.ramo}%` }
+            }
+
+            const consulta = await Trabalho.findAndCountAll({
+                where,
+                limit,
+                offset,
+                order: [['id']]
+            })
+
+            if (consulta.length === 0) {
+                throw new Error('Nenhuma profissão encontrada para esses filtros.')
+            }
+
+            return {
+                totalItems: consulta.count,
+                páginaAtual: page,
+                totalPéginas: Math.ceil(consulta.count / limit),
+                dados: consulta.rows
+            }
         } catch (error) {
-            throw Error(error)
+            throw error
         }
     }
     async atualizarProfissao(id, dadosAtualizados) {
@@ -29,7 +62,7 @@ class TrabalhoService {
 
             return dadosAtualizados
         } catch (error) {
-            throw Error(error)
+            throw error
         }
     }
     async deletarProfissao(id) {
@@ -41,7 +74,7 @@ class TrabalhoService {
             return "Deletado com Sucesso"
 
         } catch (error) {
-            throw Error(error)
+            throw error
         }
     }
 }
