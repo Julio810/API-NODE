@@ -25,13 +25,13 @@ class EmpresaService {
 
             const where = {}
             if (filtros.nome && filtros.nome.trim()) {
-                where.nome = { [Op.iLike]: `%${filtros.nome}` }
+                where.nome = { [Op.iLike]: `%${filtros.nome}%` }
             }
             if (filtros.estado && filtros.estado.trim()) {
-                where.estado = { [Op.iLike]: `%${filtros.estado}` }
+                where.estado = { [Op.iLike]: `%${filtros.estado}%` }
             }
             if (filtros.cnpj && filtros.cnpj.trim()) {
-                where.cnpj = { [Op.iLike]: `%${filtros.cnpj}` }
+                where.cnpj = { [Op.iLike]: `%${filtros.cnpj}%` }
             }
 
             const consulta = await Empresa.findAndCountAll({
