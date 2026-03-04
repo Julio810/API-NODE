@@ -6,6 +6,7 @@ import router from "./src/router/pessoasRouter.js"
 import trabalhoRouter from "./src/router/trabalhoRouter.js"
 import empresaRouter from "./src/router/empresaRouter.js"
 import produtoRouter from "./src/router/produtoRouter.js"
+import prateleiraRouter from "./src/router/prateleiraRouter.js"
 
 dotenv.config()
 
@@ -20,6 +21,7 @@ app.use('/api', router)
 app.use('/api', trabalhoRouter)
 app.use('/api', empresaRouter)
 app.use('/api', produtoRouter)
+app.use('/api', prateleiraRouter)
 
 conn
     .sync()
