@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
-import db from "../db/conndb.js"
+import conn from "../db/conndb.js"
 
-const Pessoas = db.define('pessoa', {
+const Pessoas = conn.define('pessoa', {
     id: {
         type: DataTypes.INTEGER,
         autoIncrement: true,
