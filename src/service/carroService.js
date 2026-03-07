@@ -4,18 +4,60 @@ import Carro from "../models/Carro.js"
 class CarroService {
     async cadastrarCarro(dadosVeiculo) {
         try {
+            // 1. LIMPEZA E FORMATAÇÃO 🧹
+            // Filtramos quem tem os campos obrigatórios e formatamos os dados
             const cadastrarVeiculos = dadosVeiculo
                 .filter(v => v.chassi && v.placa)
                 .map(v => ({
                     ...v,
                     chassi: v.chassi.toUpperCase(),
                     placa: Number(v.placa)
-                }))
+                }));
 
-            const cadastros = await Carro.bulkCreate(cadastrarVeiculos)
-            return cadastros
+            // 2. VALIDAÇÃO INTERNA (DUPLICADOS NA LISTA ENVIADA)
+            const listaChassis = cadastrarVeiculos.map(v => v.chassi);
+            const listaPlacas = cadastrarVeiculos.map(v => v.placa);
+
+            const chassisUnicos = new Set(listaChassis);
+            const placasUnicas = new Set(listaPlacas);
+
+            if (chassisUnicos.size !== listaChassis.length || placasUnicas.size !== listaPlacas.length) {
+                throw new Error("A lista enviada contém chassis ou placas repetidos entre si.");
+            }
+
+            // 3. VALIDAÇÃO NO BANCO DE DADOS (DUPLICADOS NO SISTEMA)
+            const dados = await Carro.findAll({
+                where: {
+                    [Op.or]: [
+                        { chassi: { [Op.in]: listaChassis } },
+                        { placa: { [Op.in]: listaPlacas } }
+                    ]
+                },
+                attributes: ['chassi', 'placa']
+            });
+
+            if (dados.length > 0) {
+                const chassisJaUsados = dados
+                    .map(e => e.chassi)
+                    .filter(c => listaChassis.includes(c));
+
+                const placasJaUsadas = dados
+                    .map(e => e.placa)
+                    .filter(p => listaPlacas.includes(p));
+
+                let mensagem = 'Cadastro interrompido: ';
+                if (chassisJaUsados.length > 0) mensagem += `Chassis já existentes: ${chassisJaUsados.join(', ')}. `;
+                if (placasJaUsadas.length > 0) mensagem += `Placas já existentes: ${placasJaUsadas.join(', ')}.`;
+
+                throw new Error(mensagem);
+            }
+
+            // 4. CADASTRO FINAL 
+            const cadastros = await Carro.bulkCreate(cadastrarVeiculos);
+            return cadastros;
+
         } catch (error) {
-            throw error
+            throw error;
         }
     }
     async buscarCarros(filtros, page, limit) {
