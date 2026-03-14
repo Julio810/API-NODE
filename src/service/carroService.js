@@ -4,60 +4,72 @@ import Carro from "../models/Carro.js"
 class CarroService {
     async cadastrarCarro(dadosVeiculo) {
         try {
-            // 1. LIMPEZA E FORMATAÇÃO 🧹
-            // Filtramos quem tem os campos obrigatórios e formatamos os dados
-            const cadastrarVeiculos = dadosVeiculo
-                .filter(v => v.chassi && v.placa)
-                .map(v => ({
-                    ...v,
-                    chassi: v.chassi.toUpperCase(),
-                    placa: Number(v.placa)
-                }));
+            const listaOriginal = Array.isArray(dadosVeiculo) ? dadosVeiculo : [dadosVeiculo]
 
-            // 2. VALIDAÇÃO INTERNA (DUPLICADOS NA LISTA ENVIADA)
-            const listaChassis = cadastrarVeiculos.map(v => v.chassi);
-            const listaPlacas = cadastrarVeiculos.map(v => v.placa);
+            // Validação interna
+            const { potenciaisValidos, erros, chassiSet, placasSet } = listaOriginal.reduce((acc, v, index) => {
+                const { chassi, placa } = v
+                const item = index + 1
 
-            const chassisUnicos = new Set(listaChassis);
-            const placasUnicas = new Set(listaPlacas);
+                if (!chassi || !placa) {
+                    acc.erros.push({ item, erro: "Campos obrigatórios ausentes", dados: v })
+                    return acc
+                }
 
-            if (chassisUnicos.size !== listaChassis.length || placasUnicas.size !== listaPlacas.length) {
-                throw new Error("A lista enviada contém chassis ou placas repetidos entre si.");
-            }
+                const chassiUpper = chassi.toUpperCase()
+                const placaNumber = Number(placa)
 
-            // 3. VALIDAÇÃO NO BANCO DE DADOS (DUPLICADOS NO SISTEMA)
+                // Validar duplicidade na lista enviada
+                if (acc.chassiSet.has(chassiUpper) || acc.placasSet.has(placaNumber)) {
+                    const motivo = acc.chassiSet.has(chassiUpper) ? "Chassi" : "Placa"
+                    acc.erros.push({ item, erro: `${motivo} duplicado na lista enviada` })
+                } else {
+                    acc.chassiSet.add(chassiUpper)
+                    acc.placasSet.add(placaNumber)
+                    acc.potenciaisValidos.push({ ...v, chassi: chassiUpper, placa: placaNumber })
+                }
+
+                return acc
+            }, { potenciaisValidos: [], erros: [], chassiSet: new Set(), placasSet: new Set() })
+
+            // Retornar os erros, se nada for validado
+            if (potenciaisValidos.length === 0) return { erros, cadastrarFinal: [] }
+
+            // Buscar no Banco
             const dados = await Carro.findAll({
                 where: {
                     [Op.or]: [
-                        { chassi: { [Op.in]: listaChassis } },
-                        { placa: { [Op.in]: listaPlacas } }
+                        { chassi: { [Op.in]: Array.from(chassiSet) } },
+                        { placa: { [Op.in]: Array.from(placasSet) } }
                     ]
                 },
                 attributes: ['chassi', 'placa']
-            });
+            })
 
-            if (dados.length > 0) {
-                const chassisJaUsados = dados
-                    .map(e => e.chassi)
-                    .filter(c => listaChassis.includes(c));
+            const cadastro = potenciaisValidos.filter(v => {
+                const conflito = dados.find(b => b.chassi === v.chassi || b.placa === v.placa)
 
-                const placasJaUsadas = dados
-                    .map(e => e.placa)
-                    .filter(p => listaPlacas.includes(p));
+                if (conflito) {
+                    erros.push({
+                        erro: conflito.chassi === v.chassi ? "Chassi já cadastrado" : "Placa já cadastrada",
+                        dados: v
+                    })
+                    return false
+                }
+                return true
+            })
 
-                let mensagem = 'Cadastro interrompido: ';
-                if (chassisJaUsados.length > 0) mensagem += `Chassis já existentes: ${chassisJaUsados.join(', ')}. `;
-                if (placasJaUsadas.length > 0) mensagem += `Placas já existentes: ${placasJaUsadas.join(', ')}.`;
-
-                throw new Error(mensagem);
+            if (cadastro.length > 0) {
+                await Carro.bulkCreate(cadastro)
             }
 
-            // 4. CADASTRO FINAL 
-            const cadastros = await Carro.bulkCreate(cadastrarVeiculos);
-            return cadastros;
+            return {
+                cadastro,
+                erros
+            }
 
         } catch (error) {
-            throw error;
+            throw error
         }
     }
     async buscarCarros(filtros, page, limit) {
@@ -89,19 +101,68 @@ class CarroService {
             throw error
         }
     }
-    async atualizarCarros(id, dadosAtualizados) {
+    async atualizarCarros(dadosAtualizados) {
         try {
-            const atualizar = await Carro.update(dadosAtualizados, {
+            const listaOriginal = Array.isArray(dadosAtualizados) ? dadosAtualizados : [dadosAtualizados]
+            const erros = []
+            const processar = []
+
+            const dados = listaOriginal.map(v => v.id).filter(Boolean)
+
+            const buscarDados = await Carro.findAll({
                 where: {
-                    id: id
+                    [Op.or]: [
+                        { id: { [Op.in]: dados } },
+                        { chassi: { [Op.in]: listaOriginal.map(v => v.chassi).filter(Boolean) } },
+                        { placa: { [Op.in]: listaOriginal.map(v => v.placa).filter(Boolean) } }
+                    ]
                 }
             })
 
-            if (atualizar === 0) {
-                throw new Error('Nenhum veículo encontrado.')
+            const idsExistentes = new Set(buscarDados.map(c => c.id))
+
+            listaOriginal.forEach((v, index) => {
+                // Verifica se o ID foi enviado e existe no Banco
+                if (!v.id || !idsExistentes.has(v.id)) {
+                    erros.push({
+                        item: v.id || index + 1,
+                        erro: "Veículo não encontrado.",
+                        dados: v
+                    })
+                    return
+                }
+
+                // Verifica se novo chassi/placa já pertence a outro carro
+                const conflito = buscarDados.find(b =>
+                    b.id !== v.id && (b.chassi === v.chassi || b.placa === v.placa)
+                )
+
+                if (conflito) {
+                    erros.push({
+                        erro: conflito.chassi === v.chassi ? "Chassi já cadastrado." : "Placa já cadastrada.",
+                        dados: v
+                    })
+                    return
+                }
+
+                processar.push(v)
+            })
+
+            const resultado = []
+
+            if (processar.length > 0) {
+                await Promise.all(processar.map(async (veiculo) => {
+                    await Carro.update(veiculo, {
+                        where: { id: veiculo.id }
+                    })
+                    resultado.push(veiculo)
+                }))
             }
 
-            return "Atualizado com sucesso"
+            return {
+                data: resultado,
+                erros: erros
+            }
         } catch (error) {
             throw error
         }

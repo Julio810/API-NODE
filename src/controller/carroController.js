@@ -31,10 +31,9 @@ class CarroController {
     }
     static async atualizarCarros(req, res) {
         try {
-            const { id } = req.params
             const atualizar = req.body
 
-            const resultado = await CarroService.atualizarCarros(id, atualizar)
+            const resultado = await CarroService.atualizarCarros(atualizar)
 
             res.status(200).json(resultado)
         } catch (error) {

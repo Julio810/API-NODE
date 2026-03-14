@@ -7,7 +7,7 @@ router.post('/cadastrar/carro', CarroController.cadastrarCarro)
 
 router.get('/buscar/carro', CarroController.buscarCarros)
 
-router.put('/atualizar/carro/:id', CarroController.atualizarCarros)
+router.put('/atualizar/carro', CarroController.atualizarCarros)
 
 router.delete('/deletar/carro/:id', CarroController.deletarCarros)
 
